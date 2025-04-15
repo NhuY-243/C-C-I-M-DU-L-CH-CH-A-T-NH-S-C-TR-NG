@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
+        <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>CÁC ĐIỂM DU LỊCH CHÙA Ở SÓC TRĂNG</title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
+        <script src="data/Cphngcha_1.js"></script>
+        <script src="data/Chatheohuyn_2.js"></script>
+        <script src="data/Tuicha_3.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString' || e.target.feature.geometry.type === 'MultiLineString') {
+              highlightLayer.setStyle({
+                color: '#ffff00',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: '#ffff00',
+                fillOpacity: 1
+              });
+            }
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        })
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var title = new L.Control({'position':'topright'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>CÁC ĐIỂM DU LỊCH CHÙA Ở SÓC TRĂNG</h2>';
+        };
+        title.addTo(map);
+        var abstract = new L.Control({'position':'bottomright'});
+        abstract.onAdd = function (map) {
+            this._div = L.DomUtil.create('div',
+            'leaflet-control abstract');
+            this._div.id = 'abstract'
+                this._div.setAttribute("onmouseenter", "abstract.show()");
+                this._div.setAttribute("onmouseleave", "abstract.hide()");
+                this.hide();
+                return this._div;
+            };
+            abstract.hide = function () {
+                this._div.classList.remove("abstractUncollapsed");
+                this._div.classList.add("abstract");
+                this._div.innerHTML = 'i'
+            }
+            abstract.show = function () {
+                this._div.classList.remove("abstract");
+                this._div.classList.add("abstractUncollapsed");
+                this._div.innerHTML = 'Bản đồ này thể hiện hệ thống các điểm du lịch chùa tại tỉnh Sóc Trăng, một trong những địa phương nổi bật về văn hóa Phật giáo Nam Tông Khmer ở khu vực Đồng bằng sông Cửu Long. Thông qua việc hiển thị vị trí phân bố các ngôi chùa tiêu biểu, bản đồ giúp người xem nhận diện không gian phân bố, quy mô và vai trò của các cơ sở tôn giáo trong đời sống văn hóa – du lịch địa phương. Các lớp dữ liệu bao gồm tên chùa, phân loại, tọa độ địa lý, và các đặc điểm văn hóa liên quan. Bản đồ phục vụ cho mục đích nghiên cứu, quy hoạch du lịch và quảng bá văn hóa đặc trưng của Sóc Trăng.';
+        };
+        abstract.addTo(map);
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+        map.createPane('pane_ESRIStandard_0');
+        map.getPane('pane_ESRIStandard_0').style.zIndex = 400;
+        var layer_ESRIStandard_0 = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            pane: 'pane_ESRIStandard_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_ESRIStandard_0;
+        map.addLayer(layer_ESRIStandard_0);
+        function pop_Cphngcha_1(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">STT</th>\
+                        <td>' + (feature.properties['STT'] !== null ? autolinker.link(String(feature.properties['STT']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Ten_chua</th>\
+                        <td class="visible-with-data" id="Ten_chua">' + (feature.properties['Ten_chua'] !== null ? autolinker.link(String(feature.properties['Ten_chua']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Nam_xay_dung</th>\
+                        <td>' + (feature.properties['Nam_xay_dung'] !== null ? autolinker.link(String(feature.properties['Nam_xay_dung']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Dia_chi</th>\
+                        <td>' + (feature.properties['Dia_chi'] !== null ? autolinker.link(String(feature.properties['Dia_chi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Tuoi</th>\
+                        <td>' + (feature.properties['Tuoi'] !== null ? autolinker.link(String(feature.properties['Tuoi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Huyen</th>\
+                        <td>' + (feature.properties['Huyen'] !== null ? autolinker.link(String(feature.properties['Huyen']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Cap_hang</th>\
+                        <td>' + (feature.properties['Cap_hang'] !== null ? autolinker.link(String(feature.properties['Cap_hang']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Phan_loai_tuoi</th>\
+                        <td>' + (feature.properties['Phan_loai_tuoi'] !== null ? autolinker.link(String(feature.properties['Phan_loai_tuoi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Cphngcha_1_0(feature) {
+            switch(String(feature.properties['Cap_hang'])) {
+                case 'Cấp quốc gia':
+                    return {
+                pane: 'pane_Cphngcha_1',
+                radius: 7.600000000000003,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(205,46,141,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Chưa Phân Hạng':
+                    return {
+                pane: 'pane_Cphngcha_1',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(161,228,59,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Di tích cách mạng cấp tỉnh':
+                    return {
+                pane: 'pane_Cphngcha_1',
+                radius: 5.600000000000001,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(166,63,203,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Di tích kiến trúc cấp tỉnh':
+                    return {
+                pane: 'pane_Cphngcha_1',
+                radius: 5.600000000000001,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(201,51,41,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Di tích lịch sử cách mạng cấp tỉnh':
+                    return {
+                pane: 'pane_Cphngcha_1',
+                radius: 5.600000000000001,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(131,123,238,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Di tích lịch sử cách mạnh cấp tỉnh':
+                    return {
+                pane: 'pane_Cphngcha_1',
+                radius: 5.600000000000001,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(92,205,100,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Di tich lịch sử văn hóa cấp tỉnh':
+                    return {
+                pane: 'pane_Cphngcha_1',
+                radius: 5.600000000000001,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(231,174,16,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'Di tích lịch sử văn hóa cấp tỉnh':
+                    return {
+                pane: 'pane_Cphngcha_1',
+                radius: 5.600000000000001,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(113,172,211,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Cphngcha_1');
+        map.getPane('pane_Cphngcha_1').style.zIndex = 401;
+        map.getPane('pane_Cphngcha_1').style['mix-blend-mode'] = 'normal';
+        var layer_Cphngcha_1 = new L.geoJson(json_Cphngcha_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Cphngcha_1',
+            layerName: 'layer_Cphngcha_1',
+            pane: 'pane_Cphngcha_1',
+            onEachFeature: pop_Cphngcha_1,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Cphngcha_1_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Cphngcha_1);
+        map.addLayer(layer_Cphngcha_1);
+        function pop_Chatheohuyn_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">STT</th>\
+                        <td>' + (feature.properties['STT'] !== null ? autolinker.link(String(feature.properties['STT']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Ten_chua</th>\
+                        <td>' + (feature.properties['Ten_chua'] !== null ? autolinker.link(String(feature.properties['Ten_chua']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Nam_xay_dung</th>\
+                        <td>' + (feature.properties['Nam_xay_dung'] !== null ? autolinker.link(String(feature.properties['Nam_xay_dung']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Dia_chi</th>\
+                        <td>' + (feature.properties['Dia_chi'] !== null ? autolinker.link(String(feature.properties['Dia_chi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Tuoi</th>\
+                        <td>' + (feature.properties['Tuoi'] !== null ? autolinker.link(String(feature.properties['Tuoi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Huyen</th>\
+                        <td>' + (feature.properties['Huyen'] !== null ? autolinker.link(String(feature.properties['Huyen']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Cap_hang</th>\
+                        <td>' + (feature.properties['Cap_hang'] !== null ? autolinker.link(String(feature.properties['Cap_hang']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Phan_loai_tuoi</th>\
+                        <td>' + (feature.properties['Phan_loai_tuoi'] !== null ? autolinker.link(String(feature.properties['Phan_loai_tuoi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Chatheohuyn_2_0(feature) {
+            switch(String(feature.properties['Huyen'])) {
+                case 'CHÂU THÀNH':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(78,221,92,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'CÙ LAO DUNG':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(97,150,225,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'KẾ SÁCH':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(192,209,32,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'LONG PHÚ':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(76,62,227,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'MỸ TÚ':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(233,111,160,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'MỸ XUYÊN':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(23,215,232,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'NGÃ NĂM':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(87,227,171,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'THẠNH TRỊ':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(216,43,23,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'TP SÓC TRĂNG':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(220,170,94,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'TRẦN ĐỀ':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(145,48,214,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'VĨNH CHÂU':
+                    return {
+                pane: 'pane_Chatheohuyn_2',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(214,30,196,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Chatheohuyn_2');
+        map.getPane('pane_Chatheohuyn_2').style.zIndex = 402;
+        map.getPane('pane_Chatheohuyn_2').style['mix-blend-mode'] = 'normal';
+        var layer_Chatheohuyn_2 = new L.geoJson(json_Chatheohuyn_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Chatheohuyn_2',
+            layerName: 'layer_Chatheohuyn_2',
+            pane: 'pane_Chatheohuyn_2',
+            onEachFeature: pop_Chatheohuyn_2,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Chatheohuyn_2_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Chatheohuyn_2);
+        map.addLayer(layer_Chatheohuyn_2);
+        function pop_Tuicha_3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">STT</th>\
+                        <td>' + (feature.properties['STT'] !== null ? autolinker.link(String(feature.properties['STT']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Ten_chua</th>\
+                        <td>' + (feature.properties['Ten_chua'] !== null ? autolinker.link(String(feature.properties['Ten_chua']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Nam_xay_dung</th>\
+                        <td>' + (feature.properties['Nam_xay_dung'] !== null ? autolinker.link(String(feature.properties['Nam_xay_dung']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Dia_chi</th>\
+                        <td>' + (feature.properties['Dia_chi'] !== null ? autolinker.link(String(feature.properties['Dia_chi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Tuoi</th>\
+                        <td>' + (feature.properties['Tuoi'] !== null ? autolinker.link(String(feature.properties['Tuoi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Huyen</th>\
+                        <td>' + (feature.properties['Huyen'] !== null ? autolinker.link(String(feature.properties['Huyen']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Cap_hang</th>\
+                        <td>' + (feature.properties['Cap_hang'] !== null ? autolinker.link(String(feature.properties['Cap_hang']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Phan_loai_tuoi</th>\
+                        <td>' + (feature.properties['Phan_loai_tuoi'] !== null ? autolinker.link(String(feature.properties['Phan_loai_tuoi']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Tuicha_3_0(feature) {
+            switch(String(feature.properties['Phan_loai_tuoi'])) {
+                case '<50':
+                    return {
+                pane: 'pane_Tuicha_3',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(215,25,28,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '>500':
+                    return {
+                pane: 'pane_Tuicha_3',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(253,174,97,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '50 - 100':
+                    return {
+                pane: 'pane_Tuicha_3',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(78,145,190,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '100 - 300':
+                    return {
+                pane: 'pane_Tuicha_3',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,191,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '300 - 500':
+                    return {
+                pane: 'pane_Tuicha_3',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(171,221,164,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Tuicha_3');
+        map.getPane('pane_Tuicha_3').style.zIndex = 403;
+        map.getPane('pane_Tuicha_3').style['mix-blend-mode'] = 'normal';
+        var layer_Tuicha_3 = new L.geoJson(json_Tuicha_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Tuicha_3',
+            layerName: 'layer_Tuicha_3',
+            pane: 'pane_Tuicha_3',
+            onEachFeature: pop_Tuicha_3,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Tuicha_3_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Tuicha_3);
+        map.addLayer(layer_Tuicha_3);
+        var osmGeocoder = new L.Control.Geocoder({
+            collapsed: true,
+            position: 'topleft',
+            text: 'Search',
+            title: 'Testing'
+        }).addTo(map);
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .className += ' fa fa-search';
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .title += 'Search for a place';
+        var overlaysTree = [
+            {label: 'Tuổi chùa<br /><table><tr><td style="text-align: center;"><img src="legend/Tuicha_3_500.png" /></td><td><50</td></tr><tr><td style="text-align: center;"><img src="legend/Tuicha_3_5001.png" /></td><td>>500</td></tr><tr><td style="text-align: center;"><img src="legend/Tuicha_3_501002.png" /></td><td>50 - 100</td></tr><tr><td style="text-align: center;"><img src="legend/Tuicha_3_1003003.png" /></td><td>100 - 300</td></tr><tr><td style="text-align: center;"><img src="legend/Tuicha_3_3005004.png" /></td><td>300 - 500</td></tr></table>', layer: layer_Tuicha_3},
+            {label: 'Chùa theo huyện<br /><table><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_CHÂUTHÀNH0.png" /></td><td>CHÂU THÀNH</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_CÙLAODUNG1.png" /></td><td>CÙ LAO DUNG</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_KẾSÁCH2.png" /></td><td>KẾ SÁCH</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_LONGPHÚ3.png" /></td><td>LONG PHÚ</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_MỸTÚ4.png" /></td><td>MỸ TÚ</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_MỸXUYÊN5.png" /></td><td>MỸ XUYÊN</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_NGÃNĂM6.png" /></td><td>NGÃ NĂM</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_THẠNHTRỊ7.png" /></td><td>THẠNH TRỊ</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_TPSÓCTRĂNG8.png" /></td><td>TP SÓC TRĂNG</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_TRẦNĐỀ9.png" /></td><td>TRẦN ĐỀ</td></tr><tr><td style="text-align: center;"><img src="legend/Chatheohuyn_2_VĨNHCHÂU10.png" /></td><td>VĨNH CHÂU</td></tr></table>', layer: layer_Chatheohuyn_2},
+            {label: 'Cấp hạng chùa<br /><table><tr><td style="text-align: center;"><img src="legend/Cphngcha_1_Cấpquốcgia0.png" /></td><td>Cấp quốc gia</td></tr><tr><td style="text-align: center;"><img src="legend/Cphngcha_1_ChưaPhânHạng1.png" /></td><td>Chưa Phân Hạng</td></tr><tr><td style="text-align: center;"><img src="legend/Cphngcha_1_Ditíchcáchmạngcấptỉnh2.png" /></td><td>Di tích cách mạng cấp tỉnh</td></tr><tr><td style="text-align: center;"><img src="legend/Cphngcha_1_Ditíchkiếntrúccấptỉnh3.png" /></td><td>Di tích kiến trúc cấp tỉnh</td></tr><tr><td style="text-align: center;"><img src="legend/Cphngcha_1_Ditíchlịchsửcáchmạngcấptỉnh4.png" /></td><td>Di tích lịch sử cách mạng cấp tỉnh</td></tr><tr><td style="text-align: center;"><img src="legend/Cphngcha_1_Ditíchlịchsửcáchmạnhcấptỉnh5.png" /></td><td>Di tích lịch sử cách mạnh cấp tỉnh</td></tr><tr><td style="text-align: center;"><img src="legend/Cphngcha_1_Ditichlịchsửvănhóacấptỉnh6.png" /></td><td>Di tich lịch sử văn hóa cấp tỉnh</td></tr><tr><td style="text-align: center;"><img src="legend/Cphngcha_1_Ditíchlịchsửvănhóacấptỉnh7.png" /></td><td>Di tích lịch sử văn hóa cấp tỉnh</td></tr></table>', layer: layer_Cphngcha_1},
+            {label: "ESRI Standard", layer: layer_ESRIStandard_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"Tuoi": "int","Phan_loai_tuoi": "str","Huyen": "str","Ten_chua": "str","Cap_hang": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Tuoi = document.createElement("div");
+            div_Tuoi.id = "div_Tuoi";
+            div_Tuoi.className = "slider";
+            document.getElementById("menu").appendChild(div_Tuoi);
+            var lab_Tuoi = document.createElement('div');
+            lab_Tuoi.innerHTML  = 'Tuoi: <span id="val_Tuoi"></span>';
+            lab_Tuoi.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_Tuoi);
+            var reset_Tuoi = document.createElement('div');
+            reset_Tuoi.innerHTML = 'clear filter';
+            reset_Tuoi.className = 'filterlabel';
+            lab_Tuoi.className = 'filterlabel';
+            reset_Tuoi.onclick = function() {
+                sel_Tuoi.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_Tuoi);
+            var sel_Tuoi = document.getElementById('div_Tuoi');
+            noUiSlider.create(sel_Tuoi, {
+                connect: true,
+                start: [21, 801],
+                step: 1,
+                format: wNumb({
+                    decimals: 0,
+                    }),
+                range: {
+                min: 21,
+                max: 801
+                }
+            });
+            sel_Tuoi.noUiSlider.on('update', function (values) {
+            filterVals =[];
+            for (value in values){
+            filterVals.push(parseInt(value))
+            }
+            val_Tuoi = document.getElementById('val_Tuoi');
+            val_Tuoi.innerHTML = values.join(' - ');
+                filterFunc()
+            });
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Phan_loai_tuoi = document.createElement('div');
+            div_Phan_loai_tuoi.id = "div_Phan_loai_tuoi";
+            div_Phan_loai_tuoi.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Phan_loai_tuoi);
+            sel_Phan_loai_tuoi = document.createElement('select');
+            sel_Phan_loai_tuoi.multiple = true;
+            sel_Phan_loai_tuoi.size = 5;
+            sel_Phan_loai_tuoi.id = "sel_Phan_loai_tuoi";
+            var Phan_loai_tuoi_options_str = "<option value='' unselected></option>";
+            sel_Phan_loai_tuoi.onchange = function(){filterFunc()};
+            Phan_loai_tuoi_options_str  += '<option value="100 - 300">100 - 300</option>';
+            Phan_loai_tuoi_options_str  += '<option value="300 - 500">300 - 500</option>';
+            Phan_loai_tuoi_options_str  += '<option value="50 - 100">50 - 100</option>';
+            Phan_loai_tuoi_options_str  += '<option value="<50"><50</option>';
+            Phan_loai_tuoi_options_str  += '<option value=">500">>500</option>';
+            sel_Phan_loai_tuoi.innerHTML = Phan_loai_tuoi_options_str;
+            div_Phan_loai_tuoi.appendChild(sel_Phan_loai_tuoi);
+            var lab_Phan_loai_tuoi = document.createElement('div');
+            lab_Phan_loai_tuoi.innerHTML = 'Phan_loai_tuoi';
+            lab_Phan_loai_tuoi.className = 'filterlabel';
+            div_Phan_loai_tuoi.appendChild(lab_Phan_loai_tuoi);
+            var reset_Phan_loai_tuoi = document.createElement('div');
+            reset_Phan_loai_tuoi.innerHTML = 'clear filter';
+            reset_Phan_loai_tuoi.className = 'filterlabel';
+            reset_Phan_loai_tuoi.onclick = function() {
+                var options = document.getElementById("sel_Phan_loai_tuoi").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Phan_loai_tuoi.appendChild(reset_Phan_loai_tuoi);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Huyen = document.createElement('div');
+            div_Huyen.id = "div_Huyen";
+            div_Huyen.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Huyen);
+            sel_Huyen = document.createElement('select');
+            sel_Huyen.multiple = true;
+            sel_Huyen.size = 10;
+            sel_Huyen.id = "sel_Huyen";
+            var Huyen_options_str = "<option value='' unselected></option>";
+            sel_Huyen.onchange = function(){filterFunc()};
+            Huyen_options_str  += '<option value="CHÂU THÀNH">CHÂU THÀNH</option>';
+            Huyen_options_str  += '<option value="CÙ LAO DUNG">CÙ LAO DUNG</option>';
+            Huyen_options_str  += '<option value="KẾ SÁCH">KẾ SÁCH</option>';
+            Huyen_options_str  += '<option value="LONG PHÚ">LONG PHÚ</option>';
+            Huyen_options_str  += '<option value="MỸ TÚ">MỸ TÚ</option>';
+            Huyen_options_str  += '<option value="MỸ XUYÊN">MỸ XUYÊN</option>';
+            Huyen_options_str  += '<option value="NGÃ NĂM">NGÃ NĂM</option>';
+            Huyen_options_str  += '<option value="THẠNH TRỊ">THẠNH TRỊ</option>';
+            Huyen_options_str  += '<option value="TP SÓC TRĂNG">TP SÓC TRĂNG</option>';
+            Huyen_options_str  += '<option value="TRẦN ĐỀ">TRẦN ĐỀ</option>';
+            Huyen_options_str  += '<option value="VĨNH CHÂU">VĨNH CHÂU</option>';
+            sel_Huyen.innerHTML = Huyen_options_str;
+            div_Huyen.appendChild(sel_Huyen);
+            var lab_Huyen = document.createElement('div');
+            lab_Huyen.innerHTML = 'Huyen';
+            lab_Huyen.className = 'filterlabel';
+            div_Huyen.appendChild(lab_Huyen);
+            var reset_Huyen = document.createElement('div');
+            reset_Huyen.innerHTML = 'clear filter';
+            reset_Huyen.className = 'filterlabel';
+            reset_Huyen.onclick = function() {
+                var options = document.getElementById("sel_Huyen").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Huyen.appendChild(reset_Huyen);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Ten_chua = document.createElement('div');
+            div_Ten_chua.id = "div_Ten_chua";
+            div_Ten_chua.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Ten_chua);
+            sel_Ten_chua = document.createElement('select');
+            sel_Ten_chua.multiple = true;
+            sel_Ten_chua.size = 10;
+            sel_Ten_chua.id = "sel_Ten_chua";
+            var Ten_chua_options_str = "<option value='' unselected></option>";
+            sel_Ten_chua.onchange = function(){filterFunc()};
+            Ten_chua_options_str  += '<option value="?Ch?a Prum Vi Sal">?Ch?a Prum Vi Sal</option>';
+            Ten_chua_options_str  += '<option value="Ch?a ?Chum Maram Pr?k Ch?k">Ch?a ?Chum Maram Pr?k Ch?k</option>';
+            Ten_chua_options_str  += '<option value="Ch?a AmP?Von So?i C?n">Ch?a AmP?Von So?i C?n</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Anh T? K?s?y Kom Pong T? Anh">Ch?a Anh T? K?s?y Kom Pong T? Anh</option>';
+            Ten_chua_options_str  += '<option value="Ch?a B? Tum Rengx?y Tum N?p">Ch?a B? Tum Rengx?y Tum N?p</option>';
+            Ten_chua_options_str  += '<option value="Ch?a B? Tum Sa K? B?ng Phni?t">Ch?a B? Tum Sa K? B?ng Phni?t</option>';
+            Ten_chua_options_str  += '<option value="Ch?a B?TumSak? S?rey Phn?P?l">Ch?a B?TumSak? S?rey Phn?P?l</option>';
+            Ten_chua_options_str  += '<option value="Ch?a B?tum Salavol ?sthdel Tum Pok Sok">Ch?a B?tum Salavol ?sthdel Tum Pok Sok</option>';
+            Ten_chua_options_str  += '<option value="Ch?a B?tum Vongsa Som R?ng">Ch?a B?tum Vongsa Som R?ng</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Bu?l Mum Prochum Melch?y Thnol Thm?y">Ch?a Bu?l Mum Prochum Melch?y Thnol Thm?y</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Can ?a S? Phon Pr?k On ?ok">Ch?a Can ?a S? Phon Pr?k On ?ok</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Cham Pa Vanhna Ram">Ch?a Cham Pa Vanhna Ram</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Chat Tu Muk Kha Rat Ta Na Ram Pem Bu?l">Ch?a Chat Tu Muk Kha Rat Ta Na Ram Pem Bu?l</option>';
+            Ten_chua_options_str  += '<option value="Ch?a ChhatTaVon Tang Du">Ch?a ChhatTaVon Tang Du</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Compong Mengchay T?kpray">Ch?a Compong Mengchay T?kpray</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Hlu?ng Ba S?c Bai Chhau">Ch?a Hlu?ng Ba S?c Bai Chhau</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Khle?ng">Ch?a Khle?ng</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Kom Pong melch?y S?r?y Utdom Pong Tuk Thm?y">Ch?a Kom Pong melch?y S?r?y Utdom Pong Tuk Thm?y</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Kom Pung Mench?y S?r?y Utdom Pr?k Om Pu">Ch?a Kom Pung Mench?y S?r?y Utdom Pr?k Om Pu</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Kompongmench?y S?rey Prolean">Ch?a Kompongmench?y S?rey Prolean</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Kompung Melch?y S?r?y Utdom Kom Pong Pro Tel">Ch?a Kompung Melch?y S?r?y Utdom Kom Pong Pro Tel</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Leskhan?svong Chhung Thum">Ch?a Leskhan?svong Chhung Thum</option>';
+            Ten_chua_options_str  += '<option value="Ch?a M?ni S?phon Pong Tuk Chas">Ch?a M?ni S?phon Pong Tuk Chas</option>';
+            Ten_chua_options_str  += '<option value="Ch?a M?ni SathaRam ??lTru">Ch?a M?ni SathaRam ??lTru</option>';
+            Ten_chua_options_str  += '<option value="Ch?a M?ni Sra Keo">Ch?a M?ni Sra Keo</option>';
+            Ten_chua_options_str  += '<option value="Ch?a M?ni Vongsa Pr?k T? Cu?l">Ch?a M?ni Vongsa Pr?k T? Cu?l</option>';
+            Ten_chua_options_str  += '<option value="Ch?a M?niSak? ?omomPil">Ch?a M?niSak? ?omomPil</option>';
+            Ten_chua_options_str  += '<option value="Ch?a M?nivongSa S?rey vong ThomMaCh?">Ch?a M?nivongSa S?rey vong ThomMaCh?</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Maech Chhum Meram Chr?i Tim Chas">Ch?a Maech Chhum Meram Chr?i Tim Chas</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Mengkol Th?p Pad?y Bung CroCh?pCh?s">Ch?a Mengkol Th?p Pad?y Bung CroCh?pCh?s</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Muni Vongsa Ram Phn? T? Ni?l">Ch?a Muni Vongsa Ram Phn? T? Ni?l</option>';
+            Ten_chua_options_str  += '<option value="Ch?a N? R?n Rengx?y Ong Kho">Ch?a N? R?n Rengx?y Ong Kho</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Om Pes Vanhnaram ?ay T? Su?s">Ch?a Om Pes Vanhnaram ?ay T? Su?s</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P? Thi Khs?ch">Ch?a P? Thi Khs?ch</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P? Thi S?th Chr?i Tum Kal ?al">Ch?a P? Thi S?th Chr?i Tum Kal ?al</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P? Thi Satha Ram">Ch?a P? Thi Satha Ram</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P? Thi Thl?ng">Ch?a P? Thi Thl?ng</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P? Thi Thum Phdau P?nh">Ch?a P? Thi Thum Phdau P?nh</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P?chMenK?l">Ch?a P?chMenK?l</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P?p Pe Vanhnaram Pr?k Pinh T?n">Ch?a P?p Pe Vanhnaram Pr?k Pinh T?n</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P?thi Kumphi Sak? ?on Ka ??n">Ch?a P?thi Kumphi Sak? ?on Ka ??n</option>';
+            Ten_chua_options_str  += '<option value="Ch?a P?thimengk?l S?rey TaTeo">Ch?a P?thimengk?l S?rey TaTeo</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Ponhlu P? Thi Onhd?t Phd?t">Ch?a Ponhlu P? Thi Onhd?t Phd?t</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Pra Sath Kong">Ch?a Pra Sath Kong</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Pres Bu?l Pres Phek">Ch?a Pres Bu?l Pres Phek</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Pring Prum Monkol Om P?p">Ch?a Pring Prum Monkol Om P?p</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Pro Chum ?el melch?y Ong Tao">Ch?a Pro Chum ?el melch?y Ong Tao</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Pro Chum Melch?y S?r?y Ch?ng Pr?k">Ch?a Pro Chum Melch?y S?r?y Ch?ng Pr?k</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Pro Chum Vong Pr?k Chac">Ch?a Pro Chum Vong Pr?k Chac</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Pro Lean Melch?y">Ch?a Pro Lean Melch?y</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Puth Rengx?y B?ng Kok">Ch?a Puth Rengx?y B?ng Kok</option>';
+            Ten_chua_options_str  += '<option value="Ch?a R?chthim?nisak? ?omThn?t">Ch?a R?chthim?nisak? ?omThn?t</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Rothtanas M?ni ?ay Ni?l">Ch?a Rothtanas M?ni ?ay Ni?l</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?phol Rengs?y Bung CroCh?p Thm?y">Ch?a S?phol Rengs?y Bung CroCh?p Thm?y</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y B?pha Cham Pa Chum">Ch?a S?r?y B?pha Cham Pa Chum</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Chum B?ng T?l Sa">Ch?a S?r?y Chum B?ng T?l Sa</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y M?ni Vong Peng Som R?ch">Ch?a S?r?y M?ni Vong Peng Som R?ch</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Muni SangKes">Ch?a S?r?y Muni SangKes</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y N?c? Chum Om Pu Diar">Ch?a S?r?y N?c? Chum Om Pu Diar</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y P? Thi ?om P?">Ch?a S?r?y P? Thi ?om P?</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y P? Thi Pruk T? Ong">Ch?a S?r?y P? Thi Pruk T? Ong</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y P?thiwel P? Pus Tuk">Ch?a S?r?y P?thiwel P? Pus Tuk</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Pem Bu?l Chas (Sras Sri?ng)">Ch?a S?r?y Pem Bu?l Chas (Sras Sri?ng)</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Phn? R? Ka">Ch?a S?r?y Phn? R? Ka</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Prochum Vong Pem Bu?l Thm?y">Ch?a S?r?y Prochum Vong Pem Bu?l Thm?y</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Prochum vong Tr? Qu?t Thm?y">Ch?a S?r?y Prochum vong Tr? Qu?t Thm?y</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y S?ckhum SongKum melch?y Sro L?n">Ch?a S?r?y S?ckhum SongKum melch?y Sro L?n</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y T?ch? Ma Ha T?p">Ch?a S?r?y T?ch? Ma Ha T?p</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Ta Mon">Ch?a S?r?y Ta Mon</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Utdom ?ay Om Pu">Ch?a S?r?y Utdom ?ay Om Pu</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Utdom P? Thi Chum">Ch?a S?r?y Utdom P? Thi Chum</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Utdom Phn? Kom B?th">Ch?a S?r?y Utdom Phn? Kom B?th</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?r?y Vong Phn? Canh Cho Chas">Ch?a S?r?y Vong Phn? Canh Cho Chas</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?rey Cro Sang">Ch?a S?rey Cro Sang</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?rey KanDal">Ch?a S?rey KanDal</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?rey ProChumvongPres Kandal T?kSap">Ch?a S?rey ProChumvongPres Kandal T?kSap</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?rey ProchumBunh S?vanhsak? ?ayTaPai">Ch?a S?rey ProchumBunh S?vanhsak? ?ayTaPai</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?rey Rotan?svong B?ng Tung">Ch?a S?rey Rotan?svong B?ng Tung</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?rey Sak? Phn?thum">Ch?a S?rey Sak? Phn?thum</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?rey Ta??k">Ch?a S?rey Ta??k</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?rey TaS?k">Ch?a S?rey TaS?k</option>';
+            Ten_chua_options_str  += '<option value="Ch?a S?s Thom Me Wach T?y ?r?yda Kom Pong Tr?p">Ch?a S?s Thom Me Wach T?y ?r?yda Kom Pong Tr?p</option>';
+            Ten_chua_options_str  += '<option value="Ch?a SalaP?thi S?rey Sak? (W?th Thm?y)">Ch?a SalaP?thi S?rey Sak? (W?th Thm?y)</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Saravol ?Tedenh SuaSd?y Bung Kol">Ch?a Saravol ?Tedenh SuaSd?y Bung Kol</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Sras Sron Kompung Melch?y ?ay Chho Khmau">Ch?a Sras Sron Kompung Melch?y ?ay Chho Khmau</option>';
+            Ten_chua_options_str  += '<option value="Ch?a T?p Pia Ram Pr?yChop">Ch?a T?p Pia Ram Pr?yChop</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Tak Khi Na Von P? Thi Pruk">Ch?a Tak Khi Na Von P? Thi Pruk</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Utdom M?ni Phn? Canh Cho Thm?y">Ch?a Utdom M?ni Phn? Canh Cho Thm?y</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Vi Thde Ram Tr? Qu?t Chas">Ch?a Vi Thde Ram Tr? Qu?t Chas</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Wi?l Lvon Naram On ??n Rus S?y">Ch?a Wi?l Lvon Naram On ??n Rus S?y</option>';
+            Ten_chua_options_str  += '<option value="Ch?a Wis Thde Ponhnaram B?ng Kha Don">Ch?a Wis Thde Ponhnaram B?ng Kha Don</option>';
+            Ten_chua_options_str  += '<option value="S?vanh Kongke Muni Kos Tung">S?vanh Kongke Muni Kos Tung</option>';
+            sel_Ten_chua.innerHTML = Ten_chua_options_str;
+            div_Ten_chua.appendChild(sel_Ten_chua);
+            var lab_Ten_chua = document.createElement('div');
+            lab_Ten_chua.innerHTML = 'Ten_chua';
+            lab_Ten_chua.className = 'filterlabel';
+            div_Ten_chua.appendChild(lab_Ten_chua);
+            var reset_Ten_chua = document.createElement('div');
+            reset_Ten_chua.innerHTML = 'clear filter';
+            reset_Ten_chua.className = 'filterlabel';
+            reset_Ten_chua.onclick = function() {
+                var options = document.getElementById("sel_Ten_chua").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Ten_chua.appendChild(reset_Ten_chua);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Cap_hang = document.createElement('div');
+            div_Cap_hang.id = "div_Cap_hang";
+            div_Cap_hang.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Cap_hang);
+            sel_Cap_hang = document.createElement('select');
+            sel_Cap_hang.multiple = true;
+            sel_Cap_hang.size = 8;
+            sel_Cap_hang.id = "sel_Cap_hang";
+            var Cap_hang_options_str = "<option value='' unselected></option>";
+            sel_Cap_hang.onchange = function(){filterFunc()};
+            Cap_hang_options_str  += '<option value="Chưa Phân Hạng">Chưa Phân Hạng</option>';
+            Cap_hang_options_str  += '<option value="Cấp quốc gia">Cấp quốc gia</option>';
+            Cap_hang_options_str  += '<option value="Di tich lịch sử văn hóa cấp tỉnh">Di tich lịch sử văn hóa cấp tỉnh</option>';
+            Cap_hang_options_str  += '<option value="Di tích cách mạng cấp tỉnh">Di tích cách mạng cấp tỉnh</option>';
+            Cap_hang_options_str  += '<option value="Di tích kiến trúc cấp tỉnh">Di tích kiến trúc cấp tỉnh</option>';
+            Cap_hang_options_str  += '<option value="Di tích lịch sử cách mạng cấp tỉnh">Di tích lịch sử cách mạng cấp tỉnh</option>';
+            Cap_hang_options_str  += '<option value="Di tích lịch sử cách mạnh cấp tỉnh">Di tích lịch sử cách mạnh cấp tỉnh</option>';
+            Cap_hang_options_str  += '<option value="Di tích lịch sử văn hóa cấp tỉnh">Di tích lịch sử văn hóa cấp tỉnh</option>';
+            sel_Cap_hang.innerHTML = Cap_hang_options_str;
+            div_Cap_hang.appendChild(sel_Cap_hang);
+            var lab_Cap_hang = document.createElement('div');
+            lab_Cap_hang.innerHTML = 'Cap_hang';
+            lab_Cap_hang.className = 'filterlabel';
+            div_Cap_hang.appendChild(lab_Cap_hang);
+            var reset_Cap_hang = document.createElement('div');
+            reset_Cap_hang.innerHTML = 'clear filter';
+            reset_Cap_hang.className = 'filterlabel';
+            reset_Cap_hang.onclick = function() {
+                var options = document.getElementById("sel_Cap_hang").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Cap_hang.appendChild(reset_Cap_hang);
+        </script>
+    </body>
+</html>
